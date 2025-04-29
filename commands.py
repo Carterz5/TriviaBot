@@ -5,41 +5,14 @@ import json
 
 
 import db
+import models
 
-from dataclasses import dataclass
-from typing import List
-from db import DB_CONFIG
+from models import Question
+from models import User
 
-@dataclass
-class Question:
-    id: int
-    prompt: str
-    answers: List[str]
-    correct_index: int
-    difficulty: str
-    category: str
-    created_by: str
 
-    def is_correct(self, user_choice: str) -> bool:
-        user_choice = user_choice.strip().upper()
-        choice_to_index = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, }
-        return choice_to_index.get(user_choice) == self.correct_index
-    
-    def to_embed(self) -> discord.Embed:
-        embed = discord.Embed(
-            title="🧠 Trivia Time!",
-            description=self.prompt,
-            color=discord.Color.blurple()
-        )
 
-        # Add the answer options
-        option_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-        for i, answer in enumerate(self.answers):
-            if i < len(option_letters):  # Prevent index error
-                embed.add_field(name=f"{option_letters[i]}.", value=answer, inline=False)
 
-        embed.set_footer(text=f"Difficulty: {self.difficulty} | Category: {self.category}")
-        return embed
 
 
 class AnswerButtons(discord.ui.View):
@@ -83,80 +56,56 @@ class AnswerButton(discord.ui.Button):
 
 
 
-
-
-def row_to_question(row) -> Question:
-    id, prompt, answers_json, correct_index, difficulty, category, created_by = row
-    return Question(
-        id=id,
-        prompt=prompt,
-        answers=json.loads(answers_json),
-        correct_index=correct_index,
-        difficulty=difficulty,
-        category=category,
-        created_by=created_by
-    )
-
-
-
-
 def register_commands(tree: discord.app_commands.CommandTree):
 
     @tree.command(name="hello", description="Say hello!")
     async def hello_command(interaction: discord.Interaction):
         await interaction.response.send_message("Hello!")
 
+    @tree.command(name="mystats", description="Displays users stats!")
+    async def my_stats(interaction: discord.Interaction):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        logging.info(f"Fetching stats for user {user_id}, guild {guild_id}")
+        try:
+            result = db.fetch_user(user_id, guild_id)
+
+        
+        except mysql.connector.Error as e:
+            await interaction.response.send_message("❌ Could not fetch user's stats.", ephemeral=True)
+
+        user = models.row_to_user(result)
+        embed = user.to_embed()
+
+        await interaction.response.send_message(embed=embed)
+
+
     # Slash command: /register
     @tree.command(name="register", description="Register yourself in the trivia leaderboard")
     async def register(interaction: discord.Interaction):
         user_id = interaction.user.id
         guild_id = interaction.guild.id
+        logging.info(f"Registering user {user_id}, guild {guild_id}")
 
         try:
-            conn = mysql.connector.connect(**DB_CONFIG)
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                INSERT INTO user_data (guild_id, user_id)
-                VALUES (%s, %s)
-                ON DUPLICATE KEY UPDATE user_id = user_id
-            """, (guild_id, user_id))
-            conn.commit()
-
+            db.add_user(user_id, guild_id)
             await interaction.response.send_message(f"{interaction.user.mention}, you are now registered!", ephemeral=True)
 
-        except mysql.connector.Error as err:
-            logging.error(f"MySQL error: {err}")
-            await interaction.response.send_message("❌ Error registering. Try again later.", ephemeral=True)
-
-        finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
+        except mysql.connector.Error as e:
+            await interaction.response.send_message("❌ Could not add user to database.", ephemeral=True)
 
     @tree.command(name="askme", description="Get asked a trivia question!")
     async def askme(interaction: discord.Interaction):
 
 
         try:
-            conn = mysql.connector.connect(**DB_CONFIG)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, prompt, answers, correct_index, difficulty, category, created_by FROM trivia_questions ORDER BY RAND() LIMIT 1")
-            result = cursor.fetchone()
+            result = db.fetch_random_question()
 
-        except mysql.connector.Error as err:
-            logging.error(f"MySQL error: {err}")
+        except mysql.connector.Error as e:
             await interaction.response.send_message("❌ Error finding question. Try again later.", ephemeral=True)
-
-        finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
+       
         
-        
-        question = row_to_question(result)
+        question = models.row_to_question(result)
         embed = question.to_embed()
 
 
