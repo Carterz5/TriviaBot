@@ -3,11 +3,12 @@ import mysql.connector
 import logging
 import json
 
+
+import db
+
 from dataclasses import dataclass
 from typing import List
-
-from config import DB_CONFIG
-
+from db import DB_CONFIG
 
 @dataclass
 class Question:

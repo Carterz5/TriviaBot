@@ -11,14 +11,6 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 
 
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'Trivia_Bot',
-    'password': 'Trivia123',
-    'database': 'Discord_Bot'
-}
-
-
 intents = discord.Intents.default()
 
 intents.message_content = True

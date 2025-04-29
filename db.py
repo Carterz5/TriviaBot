@@ -1,3 +1,11 @@
+import discord
+import mysql.connector
+import logging
+
+
+
+
+
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'Trivia_Bot',
@@ -16,3 +24,28 @@ DB_CONFIG = {
 #     gambling_losses BIGINT UNSIGNED DEFAULT 0,
 #     PRIMARY KEY (guild_id, user_id)
 # );
+
+
+
+
+def add_user(user_id, guild_id):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO user_data (guild_id, user_id)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE user_id = user_id
+        """, (guild_id, user_id))
+        conn.commit()
+
+        
+    except mysql.connector.Error as err:
+        logging.error(f"MySQL error: {err}")
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

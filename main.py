@@ -5,7 +5,7 @@ import logging
 #from dotenv import load_dotenv
 
 
-from config import DB_CONFIG, intents
+from config import intents
 from config import TOKEN
 from commands import register_commands
 from events import register_events
