@@ -37,7 +37,7 @@ class Question:
             if i < len(option_letters):  # Prevent index error
                 embed.add_field(name=f"{option_letters[i]}.", value=answer, inline=False)
 
-        embed.set_footer(text=f"Difficulty: {self.difficulty} | Category: {self.category}")
+        embed.set_footer(text=f"Difficulty: {self.difficulty} | Category: {self.category} | Author: {self.created_by}")
         return embed
     
 
