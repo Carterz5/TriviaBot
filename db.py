@@ -44,13 +44,44 @@ def add_user(user_id, guild_id):
         
     except mysql.connector.Error as err:
         logging.error(f"MySQL error: {err}")
-        raise
+        return False
 
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
+    return True
+
+def update_user(user: User):
+
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE user_data
+            SET points = %s,
+                streak = %s,
+                answers_total = %s,
+                answers_correct = %s,
+                gambling_winnings = %s,
+                gambling_losses = %s
+            WHERE guild_id = %s AND user_id = %s
+        """, (user.points, user.streak, user.answers_total, user.answers_correct, user.gambling_winnings, user.gambling_losses, user.guild_id, user.user_id))
+        conn.commit()
+
+        
+    except mysql.connector.Error as err:
+        logging.error(f"MySQL error: {err}")
+        return False
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return True
 
 
 def fetch_random_question():
@@ -63,7 +94,7 @@ def fetch_random_question():
 
     except mysql.connector.Error as err:
         logging.error(f"MySQL error: {err}")
-        raise
+        return False
 
     finally:
         if cursor:
@@ -84,7 +115,7 @@ def fetch_user(user_id, guild_id):
 
     except mysql.connector.Error as err:
         logging.error(f"MySQL error: {err}")
-        raise
+        return False
 
     finally:
         if cursor:
@@ -116,10 +147,11 @@ def add_question(question):
 
     except mysql.connector.Error as err:
         logging.error(f"MySQL error: {err}")
-        raise
+        return False
 
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
+    return True
