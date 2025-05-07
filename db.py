@@ -5,14 +5,9 @@ import json
 
 from models import Question
 from models import User
+from config import DB_CONFIG
 
 
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'Trivia_Bot',
-    'password': 'Trivia123',
-    'database': 'Discord_Bot'
-}
 
 # CREATE TABLE trivia_stats (
 #     guild_id BIGINT UNSIGNED NOT NULL,
