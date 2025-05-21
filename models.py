@@ -57,7 +57,7 @@ class User:
         embed = discord.Embed(
             title="Your Stats",
             color=discord.Color.blurple()
-        )        
+        )
         embed.add_field(name="Total Points:", value=f"{self.points:,}", inline=False)
         embed.add_field(name="Streak:", value=f"{self.streak:,}", inline=False)
         embed.add_field(name="Total Questions Answered:", value=f"{self.answers_total:,}", inline=False)

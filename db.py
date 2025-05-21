@@ -22,6 +22,29 @@ from config import DB_CONFIG
 # );
 
 
+def user_exists(user_id, guild_id):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 1 FROM user_data
+            WHERE user_id = %s AND guild_id = %s
+            LIMIT 1
+        """, (user_id, guild_id))
+
+        result = cursor.fetchone()
+        return result is not None  # True if user found, False otherwise
+
+    except mysql.connector.Error as err:
+        logging.error(f"MySQL error: {err}")
+        return False  # Or raise error, depending on how you want to handle failures
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 def add_user(user_id, guild_id):

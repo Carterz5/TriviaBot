@@ -52,7 +52,10 @@ def register_commands(tree: discord.app_commands.CommandTree):
 
     @tree.command(name="askme", description="Get asked a trivia question!")
     async def askme(interaction: discord.Interaction):
-
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        
         try:
             result = db.fetch_random_question()
         except mysql.connector.Error as e:
@@ -67,24 +70,39 @@ def register_commands(tree: discord.app_commands.CommandTree):
 
 
     @tree.command(name="askus", description="Get asked a trivia question!")
-    async def askus(interaction: discord.Interaction):
+    @app_commands.describe(rounds= "How many rounds you want to play!")
+    async def askus(interaction: discord.Interaction, rounds: int):
 
-        try:
-            result = db.fetch_random_question()
-        except mysql.connector.Error as e:
-            await interaction.response.send_message("❌ Error finding question. Try again later.", ephemeral=True)
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+
+
+        asyncio.create_task(ui.mp_game_loop(interaction, rounds))
+
+
+        # try:
+        #     result = db.fetch_random_question()
+        # except mysql.connector.Error as e:
+        #     await interaction.response.send_message("❌ Error finding question. Try again later.", ephemeral=True)
        
-        question = models.row_to_question(result)
-        embed = question.to_embed()
-        view = ui.AnswerButtonsMP(question)
-        await interaction.response.send_message(embed=embed, view=view)
-        view.message = await interaction.original_response()
+        # question = models.row_to_question(result)
+        # embed = question.to_embed()
+        # view = ui.AnswerButtonsMP(question)
+        # await interaction.response.send_message(embed=embed, view=view)
+        # view.message = await interaction.original_response()
 
     @tree.command(name="coinflip", description="Bet your points on a coin flip!")
     @app_commands.describe(bet= "How many points you want to bet", guess="Your guess: heads or tails")
     @app_commands.choices(guess=[app_commands.Choice(name="Heads", value="heads"), app_commands.Choice(name="Tails", value="tails")])
 
     async def coinflip(interaction: discord.Interaction, bet: int, guess: app_commands.Choice[str]):
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        
+        
+        
         user = models.row_to_user(db.fetch_user(interaction.user.id, interaction.guild.id))
 
         if bet < 0:
@@ -111,5 +129,9 @@ def register_commands(tree: discord.app_commands.CommandTree):
 
     @tree.command(name="submit_question", description="Submit your own trivia question!")
     async def submit_question(interaction: discord.Interaction):
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        
         view = ui.QuestionSetupView()
         await interaction.response.send_message("Choose difficulty and category:", view=view, ephemeral=True)
