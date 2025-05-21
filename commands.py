@@ -127,6 +127,23 @@ def register_commands(tree: discord.app_commands.CommandTree):
         db.update_user(user)
 
 
+    @tree.command(name="bakersdozen", description="Play Baker's Dozen! (similar to blackjack)")
+    @app_commands.describe(bet= "How many points you want to bet")
+    async def bakersdozen(interaction: discord.Interaction, bet: int):
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        user = models.row_to_user(db.fetch_user(interaction.user.id, interaction.guild.id))
+        if bet < 0:
+            await interaction.response.send_message("You can't bet negative points!")
+            return
+
+        if user.points < bet:
+            await interaction.response.send_message("You don't have that many points!")
+            return
+        
+        asyncio.create_task(ui.bakers_dozen(interaction, bet=bet))
+
     @tree.command(name="submit_question", description="Submit your own trivia question!")
     async def submit_question(interaction: discord.Interaction):
         if not db.user_exists(interaction.user.id, interaction.guild_id):

@@ -20,6 +20,12 @@ class QuestionSetupView(discord.ui.View):
         super().__init__()
         self.difficulty = None
         self.category = None
+        self.prompt = None
+        self.answer1 = None
+        self.answer2 = None
+        self.answer3 = None
+        self.answer4 = None
+        self.correct_answer = None
 
     @discord.ui.select(
         placeholder="Select difficulty...",
@@ -31,7 +37,8 @@ class QuestionSetupView(discord.ui.View):
     )
     async def select_difficulty(self, interaction: discord.Interaction, select: discord.ui.Select):
         self.difficulty = select.values[0]
-        await interaction.response.send_message(f"Difficulty set to: {self.difficulty}", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=False)
+        # await interaction.response.send_message(f"Difficulty set to: {self.difficulty}", ephemeral=True)
 
     @discord.ui.select(
         placeholder="Select category...",
@@ -64,7 +71,11 @@ class QuestionSetupView(discord.ui.View):
     )
     async def select_category(self, interaction: discord.Interaction, select: discord.ui.Select):
         self.category = select.values[0]
-        await interaction.response.send_message(f"Category set to: {self.category}", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=False)
+        # await interaction.response.send_message(f"Category set to: {self.category}", ephemeral=True)
+
+
+
 
     @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
     async def submit_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -255,40 +266,7 @@ class AnswerButtonsMP(discord.ui.View):
         for item in self.children:
             if isinstance(item, discord.ui.Button):
                 item.disabled = True
-        # if not self.answered_users:
-        #     await self.message.edit(content="Nobody answered! Trivia session has expired.", view=self)
-        #     return
-        # else:
-        #     self.answered_users.clear()
         
-        # correct_letter = ['A', 'B', 'C', 'D', 'E', 'F', 'G'][self.question.correct_index]
-        # await self.message.edit(content=f"⏰ Time's up! Correct answer was **{correct_letter}**.", view=self)
-
-        # await asyncio.sleep(3)
-        # try:
-        #     # row = db.fetch_random_question()
-        #     # next_question = models.row_to_question(row)
-
-
-        #     # self.embed = next_question.to_embed()
-        #     # self.question = next_question
-        #     # self.repopulate_buttons()
-
-        #     # self.message = await self.message.edit(content=None, embed=self.embed, view=self)
-
-        #     row = db.fetch_random_question()
-        #     next_question = models.row_to_question(row)
-        #     new_embed = next_question.to_embed()
-
-        #     new_view = AnswerButtonsMP(question=next_question)
-        #     new_view.message = self.message
-        #     await self.message.edit(content=None, embed=new_embed, view=new_view)
-
-        # except Exception as e:
-        #     await self.message.edit("Error loading next question.")
-        #     logging.error(f"Error loading next question error: {e}")
-
-
 
 class AnswerButtonMP(discord.ui.Button):
     def __init__(self, label: str, index: int):
@@ -322,6 +300,100 @@ class AnswerButtonMP(discord.ui.Button):
             user.streak = 0
         await interaction.response.defer(ephemeral=True, thinking=False)
         db.update_user(user)
+
+class bd_buttons(discord.ui.View):
+    def __init__(self, players, timeout=30):
+        super().__init__(timeout=timeout)
+        self.players = players
+        # Create join button
+        self.add_item(bd_join())
+        self.add_item(bd_howto())
+        
+    
+    async def on_timeout(self):
+        logging.info("Bakers Dozen timed out")
+        for item in self.children:
+            item.disabled = True
+
+        if self.message:
+            await self.message.edit(view=self)
+
+
+
+class bd_join(discord.ui.Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.primary, label="Join")
+    
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id in self.view.players:
+            await interaction.response.send_message("You're already playing!", ephemeral=True)
+            return
+        else:        
+            self.view.players[interaction.user.id] = {"Bet": 5}
+
+
+        embed = discord.Embed(
+            title="Someone is playing Baker's Dozen! Click join to get in on the fun!",
+            description=f"Players:",
+            color=discord.Color.blurple()
+        )
+        for user, data in self.view.players.items():
+            bet = data["Bet"]
+            embed.add_field(
+                name=f"Player",
+                value=f"<@{user}> Bet: {bet}",
+                inline=False
+            )
+        
+
+        await interaction.response.edit_message(content=f"🍞 Baker's Dozen!", embed=embed)
+
+
+class bd_howto(discord.ui.Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.primary, label="How to play")
+    
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            content="Bakers dozen is a dice game similar to blackjack." \
+            " Each player rolls 2d6, keeping one d6 secret. Everyone is able to see the other players current total, minus their secret die." \
+            "\nAfter rolling, players can either roll an additional d6, or stay." \
+            " You can roll as many additional dice as you wish.\nThe goal is to get as close to, or exactly, 13 - a baker's dozen. Going over means you lose!\n" \
+            "After everyone has finished rolling, the players true totals are revealed! The player with the closest score to 13, without going over, wins!",
+            ephemeral=True
+        )
+
+
+
+
+# <@{interaction.user.id}>
+async def bakers_dozen(interaction: discord.Interaction, bet: int):
+    players = dict()
+    players[interaction.user.id] = {"Bet": bet}
+    finished = False
+
+    view=bd_buttons(players)
+    embed = discord.Embed(
+        title=" Click join to get in on the fun!",
+        description=f"Minimum entry bet of 5 points.",
+        color=discord.Color.blurple()
+    )
+    for user, data in players.items():
+        bet = data["Bet"]
+        embed.add_field(
+            name=f"Player",
+            value=f"<@{user}> Bet: {bet}",
+            inline=False
+        )
+
+    message = await interaction.response.send_message(content=f"🍞 Baker's Dozen!", embed=embed, view=view)
+    view.message = await interaction.original_response()
+    #gameplay loop
+
+    # while not finished:
+
 
 
 async def mp_game_loop(interaction: discord.Interaction, rounds: int):
@@ -385,6 +457,7 @@ async def mp_game_loop(interaction: discord.Interaction, rounds: int):
         question_start = int(time.time())
         await view.message.edit(content=f"Next Question <t:{question_start + 10}:R>.", embed=result_embed, view=view)
         await asyncio.sleep(10)
+    
     await view.message.edit(content=None, embed=result_embed, view=view)
 
     final_score_embed = discord.Embed(
