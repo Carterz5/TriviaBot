@@ -3,6 +3,7 @@ import logging
 import asyncio
 import mysql.connector
 import time
+import random
 
 
 import db
@@ -301,24 +302,97 @@ class AnswerButtonMP(discord.ui.Button):
         await interaction.response.defer(ephemeral=True, thinking=False)
         db.update_user(user)
 
+#baker's dozen
+
 class bd_buttons(discord.ui.View):
-    def __init__(self, players, timeout=30):
+    def __init__(self, players, timeout=60):
         super().__init__(timeout=timeout)
         self.players = players
         # Create join button
         self.add_item(bd_join())
         self.add_item(bd_howto())
+       
+    async def update_embed(self):
+        embed = discord.Embed(
+            title="Game Has Started!",
+            description=f"Try to roll a total of 13 without going over! Closest Wins!",
+            color=discord.Color.blurple()
+        )
+        for user, data in self.players.items():
+            bet = data["Bet"]
+            score = data["Score"] - data["Hidden"]
+            if data["Score"] > 13:
+                embed.add_field(
+                name=f"Player:",
+                value=f"<@{user}> Bet: {bet}, Score: BUST",
+                inline=False
+                )
+            elif data.get("Stay") == 1:
+                embed.add_field(
+                    name=f"Player:",
+                    value=f"<@{user}> Bet: {bet}, Score: {score}, STAYING",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name=f"Player:",
+                    value=f"<@{user}> Bet: {bet}, Score: {score}",
+                    inline=False
+                )
+
+
+        await self.message.edit(embed=embed, view=self)
+
+    def start(self):
+        self.clear_items()
+        self.add_item(bd_roll())
+        self.add_item(bd_stay())
         
-    
     async def on_timeout(self):
         logging.info("Bakers Dozen timed out")
         for item in self.children:
             item.disabled = True
 
         if self.message:
-            await self.message.edit(view=self)
+            await self.message.edit(view=None)
 
+class bd_roll(discord.ui.Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.primary, label="Roll!")
 
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id not in self.view.players:
+            await interaction.response.send_message("You are not playing!", ephemeral=True)
+            return
+        if self.view.players[interaction.user.id]["Score"] > 13:
+            await interaction.response.send_message("You already busted!, you cannot roll anymore", ephemeral=True)
+            return
+        if self.view.players[interaction.user.id].get("Stay") == 1:
+            await interaction.response.send_message("You have chosen to stay, and can no longer roll", ephemeral=True)
+            return
+
+        roll = random.randint(1, 6)
+        self.view.players[interaction.user.id]["Score"] += roll
+        if self.view.players[interaction.user.id]["Score"] > 13:
+            await interaction.response.send_message(f"You rolled a {roll}! You're new total is {self.view.players[interaction.user.id]["Score"]}! You have busted!", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"You rolled a {roll}! You're new total is {self.view.players[interaction.user.id]["Score"]}", ephemeral=True)
+
+        await self.view.update_embed()
+
+class bd_stay(discord.ui.Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.primary, label="Stay!")
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id not in self.view.players:
+            await interaction.response.send_message("You are not playing!", ephemeral=True)
+            return
+        else:
+            self.view.players[interaction.user.id]["Stay"] = 1
+            await interaction.response.defer()
+
+        await self.view.update_embed()
 
 class bd_join(discord.ui.Button):
     def __init__(self):
@@ -326,16 +400,24 @@ class bd_join(discord.ui.Button):
     
 
     async def callback(self, interaction: discord.Interaction):
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        
+        
         if interaction.user.id in self.view.players:
             await interaction.response.send_message("You're already playing!", ephemeral=True)
             return
-        else:        
-            self.view.players[interaction.user.id] = {"Bet": 5}
+        else:
+            hidden_roll = random.randint(1, 6)
+            roll = random.randint(1, 6)
+            self.view.players[interaction.user.id] = {"Bet": 5, "Score": roll+hidden_roll, "Hidden": hidden_roll}
+            await interaction.response.send_message(f"Your hidden roll is: {hidden_roll}, public roll of {roll}, with a total of: {self.view.players[interaction.user.id]["Score"]}. Do not share this info with the other players!", ephemeral=True)
 
 
         embed = discord.Embed(
-            title="Someone is playing Baker's Dozen! Click join to get in on the fun!",
-            description=f"Players:",
+            title="Click join to get in on the fun!",
+            description=f"Minimum entry bet of 5 points.",
             color=discord.Color.blurple()
         )
         for user, data in self.view.players.items():
@@ -346,8 +428,8 @@ class bd_join(discord.ui.Button):
                 inline=False
             )
         
+        await self.view.message.edit(embed=embed)
 
-        await interaction.response.edit_message(content=f"🍞 Baker's Dozen!", embed=embed)
 
 
 class bd_howto(discord.ui.Button):
@@ -367,12 +449,13 @@ class bd_howto(discord.ui.Button):
 
 
 
-
+# features to add:
+# command user determines size of bet for everyone.
+# 
 # <@{interaction.user.id}>
 async def bakers_dozen(interaction: discord.Interaction, bet: int):
     players = dict()
-    players[interaction.user.id] = {"Bet": bet}
-    finished = False
+    game_start = int(time.time())
 
     view=bd_buttons(players)
     embed = discord.Embed(
@@ -388,16 +471,96 @@ async def bakers_dozen(interaction: discord.Interaction, bet: int):
             inline=False
         )
 
-    message = await interaction.response.send_message(content=f"🍞 Baker's Dozen!", embed=embed, view=view)
+    await interaction.response.send_message(content=f"🍞 Baker's Dozen! game starts <t:{game_start + 15}:R>", embed=embed, view=view)
+    message = await interaction.original_response()
     view.message = await interaction.original_response()
-    #gameplay loop
+    
+    await asyncio.sleep(16)
+    game_start = int(time.time())
 
-    # while not finished:
+    # Disable buttons
+    for item in view.children:
+        if isinstance(item, discord.ui.Button):
+            item.disabled = True
+
+    if not players:
+        await view.message.edit(content="Nobody Joined! Baker's Dozen has expired.", view=view)
+        return
+    
+    view.start()
+    await view.message.edit(content=f"🍞 Baker's Dozen! game ends <t:{game_start + 30}:R>")
+    await view.update_embed()
+    view.message = message
+
+    await asyncio.sleep(31)
+
+
+    # Step 1: Filter out busted players
+    valid_players = {
+        user: data
+        for user, data in players.items()
+        if data["Score"] <= 13
+    }
+
+    # Step 2: Find highest valid score
+    winner_ids = []
+    winning_score = None
+    if valid_players:
+        # Get the highest valid score
+        winning_score = max(data["Score"] for data in valid_players.values())
+        # Get all users with that score
+        winner_ids = [
+            user for user, data in valid_players.items()
+            if data["Score"] == winning_score
+        ]
+
+    # Step 3: Build embed showing all players
+    embed = discord.Embed(
+        title="🍞 Baker's Dozen - Results!",
+        description="Final scores below:",
+        color=discord.Color.gold()
+    )
+
+    for user, data in players.items():
+        true_score = data["Score"]
+        bet = data["Bet"]
+        if true_score > 13:
+            score_display = "BUST"
+        else:
+            score_display = str(true_score)
+
+        embed.add_field(
+            name="Player",
+            value=f"<@{user}> Bet: {bet}, Final Score: {score_display}",
+            inline=False
+        )
+
+    # Step 4: Add winners section
+    if winner_ids:
+        mentions = ", ".join(f"<@{user}>" for user in winner_ids)
+        embed.add_field(
+            name="🏆 Winner(s)",
+            value=f"{mentions} with a score of **{winning_score}**!",
+            inline=False
+        )
+    else:
+        embed.add_field(
+            name="No Winner 😢",
+            value="Everyone busted!",
+            inline=False
+        )
+
+    # Step 5: Update the message
+    await interaction.edit_original_response(embed=embed, view=None)
+
+
+    
 
 
 
 async def mp_game_loop(interaction: discord.Interaction, rounds: int):
     scoreboard = dict()
+
     for i in range(rounds):
         # Fetch a new question
         row = db.fetch_random_question()
@@ -446,6 +609,7 @@ async def mp_game_loop(interaction: discord.Interaction, rounds: int):
                     inline=False
                 )
             else:
+                scoreboard[user_name] = scoreboard.get(user_name, 0)
                 result_embed.add_field(
                     name=f"❌{user_name} ",
                     value=f"- Got it wrong in {speed:.2f} seconds!",
