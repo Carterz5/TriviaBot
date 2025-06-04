@@ -305,9 +305,11 @@ class AnswerButtonMP(discord.ui.Button):
 #baker's dozen
 
 class bd_buttons(discord.ui.View):
-    def __init__(self, players, timeout=60):
+    def __init__(self, players, entry, starter, timeout=60):
         super().__init__(timeout=timeout)
         self.players = players
+        self.entry = entry
+        self.starter = starter
         # Create join button
         self.add_item(bd_join())
         self.add_item(bd_howto())
@@ -319,24 +321,24 @@ class bd_buttons(discord.ui.View):
             color=discord.Color.blurple()
         )
         for user, data in self.players.items():
-            bet = data["Bet"]
+            
             score = data["Score"] - data["Hidden"]
             if data["Score"] > 13:
                 embed.add_field(
                 name=f"Player:",
-                value=f"<@{user}> Bet: {bet}, Score: BUST",
+                value=f"<@{user}> Score: BUST",
                 inline=False
                 )
             elif data.get("Stay") == 1:
                 embed.add_field(
                     name=f"Player:",
-                    value=f"<@{user}> Bet: {bet}, Score: {score}, STAYING",
+                    value=f"<@{user}> Score: {score}, STAYING",
                     inline=False
                 )
             else:
                 embed.add_field(
                     name=f"Player:",
-                    value=f"<@{user}> Bet: {bet}, Score: {score}",
+                    value=f"<@{user}> Score: {score}",
                     inline=False
                 )
 
@@ -373,10 +375,12 @@ class bd_roll(discord.ui.Button):
 
         roll = random.randint(1, 6)
         self.view.players[interaction.user.id]["Score"] += roll
+        emoji_map = {1: "1️⃣", 2: "2️⃣", 3: "3️⃣", 4: "4️⃣", 5: "5️⃣", 6: "6️⃣"}
+        roll_emoji = emoji_map[roll]
         if self.view.players[interaction.user.id]["Score"] > 13:
-            await interaction.response.send_message(f"You rolled a {roll}! You're new total is {self.view.players[interaction.user.id]["Score"]}! You have busted!", ephemeral=True)
+            await interaction.response.send_message(f"You rolled a {roll_emoji}! You're new total is {self.view.players[interaction.user.id]["Score"]}! You have busted!", ephemeral=True)
         else:
-            await interaction.response.send_message(f"You rolled a {roll}! You're new total is {self.view.players[interaction.user.id]["Score"]}", ephemeral=True)
+            await interaction.response.send_message(f"You rolled a {roll_emoji}! You're new total is {self.view.players[interaction.user.id]["Score"]}", ephemeral=True)
 
         await self.view.update_embed()
 
@@ -403,7 +407,10 @@ class bd_join(discord.ui.Button):
         if not db.user_exists(interaction.user.id, interaction.guild_id):
             await interaction.response.send_message("You aren't registered, please use the /register command!")
             return
-        
+        user = models.row_to_user(db.fetch_user(interaction.user.id, interaction.guild.id))
+        if user.points < self.view.entry:
+            await interaction.response.send_message("You don't have enough points!")
+            return
         
         if interaction.user.id in self.view.players:
             await interaction.response.send_message("You're already playing!", ephemeral=True)
@@ -411,24 +418,29 @@ class bd_join(discord.ui.Button):
         else:
             hidden_roll = random.randint(1, 6)
             roll = random.randint(1, 6)
-            self.view.players[interaction.user.id] = {"Bet": 5, "Score": roll+hidden_roll, "Hidden": hidden_roll}
-            await interaction.response.send_message(f"Your hidden roll is: {hidden_roll}, public roll of {roll}, with a total of: {self.view.players[interaction.user.id]["Score"]}. Do not share this info with the other players!", ephemeral=True)
+            emoji_map = {1: "1️⃣", 2: "2️⃣", 3: "3️⃣", 4: "4️⃣", 5: "5️⃣", 6: "6️⃣"}
+            roll_emoji = emoji_map[roll]
+            hidden_roll_emoji = emoji_map[hidden_roll]
+            self.view.players[interaction.user.id] = {"Score": roll+hidden_roll, "Hidden": hidden_roll}
+            await interaction.response.send_message(f"Your hidden roll is: {hidden_roll_emoji}, public roll of {roll_emoji}, with a total of: {self.view.players[interaction.user.id]["Score"]}.\nDo not share this info with the other players!", ephemeral=True)
 
 
         embed = discord.Embed(
             title="Click join to get in on the fun!",
-            description=f"Minimum entry bet of 5 points.",
+            description=f"<@{self.view.starter}> has set the buy in at {self.view.entry} points!\n The pot is now {len(self.view.players) * self.view.entry} points!",
             color=discord.Color.blurple()
         )
-        for user, data in self.view.players.items():
-            bet = data["Bet"]
+        for id, data in self.view.players.items():
             embed.add_field(
                 name=f"Player",
-                value=f"<@{user}> Bet: {bet}",
+                value=f"<@{id}>",
                 inline=False
             )
         
         await self.view.message.edit(embed=embed)
+
+        user.points -= int(self.view.entry)
+        db.update_user(user)
 
 
 
@@ -456,18 +468,18 @@ class bd_howto(discord.ui.Button):
 async def bakers_dozen(interaction: discord.Interaction, bet: int):
     players = dict()
     game_start = int(time.time())
-
-    view=bd_buttons(players)
+    starter = interaction.user.id
+    view=bd_buttons(players, bet, starter)
     embed = discord.Embed(
         title=" Click join to get in on the fun!",
-        description=f"Minimum entry bet of 5 points.",
+        description=f"<@{starter}> has set the buy in at {bet} points!",
         color=discord.Color.blurple()
     )
     for user, data in players.items():
         bet = data["Bet"]
         embed.add_field(
             name=f"Player",
-            value=f"<@{user}> Bet: {bet}",
+            value=f"<@{user}>",
             inline=False
         )
 
@@ -523,7 +535,7 @@ async def bakers_dozen(interaction: discord.Interaction, bet: int):
 
     for user, data in players.items():
         true_score = data["Score"]
-        bet = data["Bet"]
+        
         if true_score > 13:
             score_display = "BUST"
         else:
@@ -531,15 +543,16 @@ async def bakers_dozen(interaction: discord.Interaction, bet: int):
 
         embed.add_field(
             name="Player",
-            value=f"<@{user}> Bet: {bet}, Final Score: {score_display}",
+            value=f"<@{user}> Final Score: {score_display}",
             inline=False
         )
 
     # Step 4: Add winners section
     if winner_ids:
+        winnings = (len(players) * bet) / len(winner_ids)
         mentions = ", ".join(f"<@{user}>" for user in winner_ids)
         embed.add_field(
-            name="🏆 Winner(s)",
+            name=f"🏆 Winner(s) each recieve {winnings} points!",
             value=f"{mentions} with a score of **{winning_score}**!",
             inline=False
         )
@@ -551,8 +564,22 @@ async def bakers_dozen(interaction: discord.Interaction, bet: int):
         )
 
     # Step 5: Update the message
-    await interaction.edit_original_response(embed=embed, view=None)
+    await interaction.edit_original_response(content="Baker's Dozen is over!", embed=embed, view=None)
 
+    if winner_ids:
+        
+        for id in winner_ids:
+            user = models.row_to_user(db.fetch_user(id, interaction.guild.id))
+            user.points += int(winnings)
+            user.gambling_winnings += (int(winnings) - bet)
+            db.update_user(user)
+
+    loser_ids = [player_id for player_id in players if player_id not in winner_ids]
+    if loser_ids:
+        for id in loser_ids:
+            user = models.row_to_user(db.fetch_user(id, interaction.guild.id))
+            user.gambling_losses += bet
+            db.update_user(user)
 
     
 

@@ -81,17 +81,6 @@ def register_commands(tree: discord.app_commands.CommandTree):
         asyncio.create_task(ui.mp_game_loop(interaction, rounds))
 
 
-        # try:
-        #     result = db.fetch_random_question()
-        # except mysql.connector.Error as e:
-        #     await interaction.response.send_message("❌ Error finding question. Try again later.", ephemeral=True)
-       
-        # question = models.row_to_question(result)
-        # embed = question.to_embed()
-        # view = ui.AnswerButtonsMP(question)
-        # await interaction.response.send_message(embed=embed, view=view)
-        # view.message = await interaction.original_response()
-
     @tree.command(name="coinflip", description="Bet your points on a coin flip!")
     @app_commands.describe(bet= "How many points you want to bet", guess="Your guess: heads or tails")
     @app_commands.choices(guess=[app_commands.Choice(name="Heads", value="heads"), app_commands.Choice(name="Tails", value="tails")])
