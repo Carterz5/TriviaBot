@@ -2,13 +2,17 @@ import discord
 import mysql.connector
 import logging
 import asyncio
-import random
+
 
 from discord import app_commands
 
-import db
-import models
-import ui
+from core import db
+from core import models
+from commands.submit_question import QuestionSetupView
+from commands.games.coinflip import coin_flip
+from commands.games.bakers_dozen import bakers_dozen
+from commands.games.trivia_mp import mp_game_loop
+from commands.games.trivia_sp import AnswerButtons
 
 
 
@@ -63,7 +67,7 @@ def register_commands(tree: discord.app_commands.CommandTree):
        
         question = models.row_to_question(result)
         embed = question.to_embed()
-        view = ui.AnswerButtons(question)
+        view = AnswerButtons(question)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
@@ -78,42 +82,40 @@ def register_commands(tree: discord.app_commands.CommandTree):
             return
 
 
-        asyncio.create_task(ui.mp_game_loop(interaction, rounds))
+        asyncio.create_task(mp_game_loop(interaction, rounds))
 
 
     @tree.command(name="coinflip", description="Bet your points on a coin flip!")
-    @app_commands.describe(bet= "How many points you want to bet", guess="Your guess: heads or tails")
-    @app_commands.choices(guess=[app_commands.Choice(name="Heads", value="heads"), app_commands.Choice(name="Tails", value="tails")])
-
-    async def coinflip(interaction: discord.Interaction, bet: int, guess: app_commands.Choice[str]):
+    @app_commands.describe(bet= "How many points you want to bet")
+    
+    async def coinflip(interaction: discord.Interaction, bet: int):
         if not db.user_exists(interaction.user.id, interaction.guild_id):
             await interaction.response.send_message("You aren't registered, please use the /register command!")
             return
-        
-        
-        
         user = models.row_to_user(db.fetch_user(interaction.user.id, interaction.guild.id))
-
-        if bet < 0:
-            await interaction.response.send_message("You can't bet negative points!")
+        if bet < 1:
+            await interaction.response.send_message("You must bet more than 0 points!")
             return
 
         if user.points < bet:
             await interaction.response.send_message("You don't have that many points!")
             return
+        
+        
+        asyncio.create_task(coin_flip(interaction, bet))
 
-        result = random.choice(["heads", "tails"])
+        # result = random.choice(["heads", "tails"])
 
-        if guess.value == result:
-            await interaction.response.send_message(f"🎉 It's {result}! You win {bet} points!")
-            user.points += bet
-            user.gambling_winnings += bet
-        else:
-            await interaction.response.send_message(f"😢 It's {result}. You lose {bet} points.")
-            user.points -= bet
-            user.gambling_losses += bet
+        # if guess.value == result:
+        #     await interaction.response.send_message(f"🎉 It's {result}! You win {bet} points!")
+        #     user.points += bet
+        #     user.gambling_winnings += bet
+        # else:
+        #     await interaction.response.send_message(f"😢 It's {result}. You lose {bet} points.")
+        #     user.points -= bet
+        #     user.gambling_losses += bet
 
-        db.update_user(user)
+        # db.update_user(user)
 
 
     @tree.command(name="bakersdozen", description="Play Baker's Dozen! (similar to blackjack)")
@@ -131,7 +133,7 @@ def register_commands(tree: discord.app_commands.CommandTree):
             await interaction.response.send_message("You don't have that many points!")
             return
         
-        asyncio.create_task(ui.bakers_dozen(interaction, bet=bet))
+        asyncio.create_task(bakers_dozen(interaction, bet=bet))
 
     @tree.command(name="submit_question", description="Submit your own trivia question!")
     async def submit_question(interaction: discord.Interaction):
@@ -139,5 +141,5 @@ def register_commands(tree: discord.app_commands.CommandTree):
             await interaction.response.send_message("You aren't registered, please use the /register command!")
             return
         
-        view = ui.QuestionSetupView()
+        view = QuestionSetupView()
         await interaction.response.send_message("Choose difficulty and category:", view=view, ephemeral=True)

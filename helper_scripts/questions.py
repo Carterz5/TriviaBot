@@ -2,8 +2,8 @@ import requests
 import html
 import random
 import json
-import models
-import db
+from core import db
+from core import models
 
 url = "https://opentdb.com/api.php?amount=10"
 data = requests.get(url)

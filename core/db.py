@@ -3,8 +3,8 @@ import mysql.connector
 import logging
 import json
 
-from models import Question
-from models import User
+from core.models import Question
+from core.models import User
 from config import DB_CONFIG
 
 
