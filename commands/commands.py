@@ -55,7 +55,7 @@ def register_commands(tree: discord.app_commands.CommandTree):
         except mysql.connector.Error as e:
             await interaction.response.send_message("❌ Could not add user to database.", ephemeral=True)
 
-    @tree.command(name="askme", description="Get asked a trivia question!")
+    @tree.command(name="askme", description="Play a game of trivia by yourself!")
     async def askme(interaction: discord.Interaction):
         if not db.user_exists(interaction.user.id, interaction.guild_id):
             await interaction.response.send_message("You aren't registered, please use the /register command!")
@@ -74,7 +74,7 @@ def register_commands(tree: discord.app_commands.CommandTree):
 
 
 
-    @tree.command(name="askus", description="Get asked a trivia question!")
+    @tree.command(name="askus", description="Play a game of trivia with friends!")
     @app_commands.describe(rounds= "How many rounds you want to play!")
     async def askus(interaction: discord.Interaction, rounds: int):
 
@@ -151,3 +151,23 @@ def register_commands(tree: discord.app_commands.CommandTree):
         
         view = QuestionSetupView()
         await interaction.response.send_message("Choose difficulty and category:", view=view, ephemeral=True)
+
+    @tree.command(name="help", description="Get a list of all commands and what they do.")
+    async def help(interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="Help",
+            description=None,
+            color=discord.Color.blurple()
+        )
+        embed.add_field(name="/askme",value="Play a game of trivia by yourself.",inline=False)
+        embed.add_field(name="/askus",value="Play a game of trivia with friends.",inline=False)
+        embed.add_field(name="/bakersdozen",value="Play a game of bakersdozen.",inline=False)
+        embed.add_field(name="/coinflip",value="Gamble your points on the outcome of a coinflip.",inline=False)
+        embed.add_field(name="/hello",value="Say hello.",inline=False)
+        embed.add_field(name="/help",value="Shows this info.",inline=False)
+        embed.add_field(name="/mystats",value="Display a message with all your stats.",inline=False)
+        embed.add_field(name="/register",value="Register yourself as a player. This allows tracking of stats.",inline=False)
+        embed.add_field(name="/slots",value="Gamble your points on the outcome of a slot machine.",inline=False)
+        embed.add_field(name="/submit_question",value="Submit your own question into the trivia database.",inline=False)
+
+        await interaction.response.send_message(embed=embed)
