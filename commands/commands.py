@@ -13,6 +13,7 @@ from commands.games.coinflip import coin_flip
 from commands.games.bakers_dozen import bakers_dozen
 from commands.games.trivia_mp import mp_game_loop
 from commands.games.trivia_sp import AnswerButtons
+from commands.games.slots import slot_machine
 
 
 
@@ -104,18 +105,25 @@ def register_commands(tree: discord.app_commands.CommandTree):
         
         asyncio.create_task(coin_flip(interaction, bet))
 
-        # result = random.choice(["heads", "tails"])
+    @tree.command(name="slots", description="Bet your points on a coin flip!")
+    @app_commands.describe(bet= "How many points you want to bet")
+    
+    async def slots(interaction: discord.Interaction, bet: int):
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        user = models.row_to_user(db.fetch_user(interaction.user.id, interaction.guild.id))
+        if bet < 1:
+            await interaction.response.send_message("You must bet more than 0 points!")
+            return
 
-        # if guess.value == result:
-        #     await interaction.response.send_message(f"🎉 It's {result}! You win {bet} points!")
-        #     user.points += bet
-        #     user.gambling_winnings += bet
-        # else:
-        #     await interaction.response.send_message(f"😢 It's {result}. You lose {bet} points.")
-        #     user.points -= bet
-        #     user.gambling_losses += bet
+        if user.points < bet:
+            await interaction.response.send_message("You don't have that many points!")
+            return
+        
+        
+        asyncio.create_task(slot_machine(interaction, bet))
 
-        # db.update_user(user)
 
 
     @tree.command(name="bakersdozen", description="Play Baker's Dozen! (similar to blackjack)")

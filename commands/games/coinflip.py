@@ -80,13 +80,13 @@ class cf_button(discord.ui.Button):
             return
         
         if correct_side == self.choice:
-            await interaction.response.send_message(content=f"You guessed right! You have won {self.view.bet} points!", ephemeral=True)
+            await interaction.response.send_message(content=f"You guessed right! You have won {self.view.bet} points! Your new balance is {user.points}.", ephemeral=True)
             player["Score"] += self.view.bet
             player["Flips"] += 1
             user.gambling_winnings += self.view.bet
             user.points += self.view.bet
         else:
-            await interaction.response.send_message(content=f"You guessed wrong! You have lost {self.view.bet} points!", ephemeral=True)
+            await interaction.response.send_message(content=f"You guessed wrong! You have lost {self.view.bet} points! Your new balance is {user.points}.", ephemeral=True)
             player["Score"] -= self.view.bet
             player["Flips"] += 1
             user.gambling_losses += self.view.bet
