@@ -58,6 +58,10 @@ class AnswerButtonMP(discord.ui.Button):
         self.index = index
 
     async def callback(self, interaction: discord.Interaction):
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        
         if interaction.user.name in self.view.answered_users:
             await interaction.response.send_message("You already answered!", ephemeral=True)
             return

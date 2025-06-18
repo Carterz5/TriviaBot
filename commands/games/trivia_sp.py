@@ -16,12 +16,13 @@ from core.models import Question
 
 
 class AnswerButtons(discord.ui.View):
-    def __init__(self, question: Question, timeout=30, timeoutflag=False, buttonflag=False):
+    def __init__(self, question: Question, starter, timeout=30, timeoutflag=False, buttonflag=False):
         super().__init__(timeout=timeout)
         self.question = question
         self.response = None
         self.timeoutflag = timeoutflag
         self.buttonflag = buttonflag
+        self.starter = starter
 
         # Create buttons based on the number of answers
         option_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
@@ -56,6 +57,10 @@ class AnswerButton(discord.ui.Button):
         self.index = index
 
     async def callback(self, interaction: discord.Interaction):
+        if not interaction.user.id == self.view.starter:
+            interaction.response.send_message("This is a single player game, and you did not start it!")
+            return
+        
         question: Question = self.view.question
         is_correct = (self.index == question.correct_index)
         user = models.row_to_user(db.fetch_user(interaction.user.id, interaction.guild.id))
@@ -81,7 +86,7 @@ class AnswerButton(discord.ui.Button):
         else:
             correct_letter = ['A', 'B', 'C', 'D', 'E', 'F', 'G'][question.correct_index]
             await interaction.response.edit_message(
-                content=f"❌ Wrong! Correct answer was **{correct_letter}**.",
+                content=f"❌ Wrong! Correct answer was **{correct_letter}**, {question.answers[question.correct_index]}",
                 view=self.view
             )
             user.answers_total += 1

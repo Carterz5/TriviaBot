@@ -55,15 +55,19 @@ class User:
 
     def to_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="Your Stats",
+            title="📊 Your Stats!",
             color=discord.Color.blurple()
         )
-        embed.add_field(name="Total Points:", value=f"{self.points:,}", inline=False)
-        embed.add_field(name="Streak:", value=f"{self.streak:,}", inline=False)
+        correct_percent = get_percentage(self.answers_correct, self.answers_total)
+        net_winnings = self.gambling_winnings - self.gambling_losses
+        embed.add_field(name="Total Points:", value=f"{self.points:,}", inline=True)
+        embed.add_field(name="Streak:", value=f"{self.streak:,}", inline=True)
         embed.add_field(name="Total Questions Answered:", value=f"{self.answers_total:,}", inline=False)
-        embed.add_field(name="Total Correct Answers:", value=f"{self.answers_correct:,}", inline=False)
+        embed.add_field(name="Total Correct Answers:", value=f"{self.answers_correct:,}", inline=True)
+        embed.add_field(name="Correct %", value=f"{correct_percent:.2f}%")
         embed.add_field(name="Total Gambling Winnings:", value=f"{self.gambling_winnings:,}", inline=False)
-        embed.add_field(name="Total Gambling Losses:", value=f"{self.gambling_losses:,}", inline=False)
+        embed.add_field(name="Total Gambling Losses:", value=f"{self.gambling_losses:,}", inline=True)
+        embed.add_field(name="Net Winnings:", value=f"{net_winnings}", inline=True)
 
         return embed
     
@@ -91,3 +95,9 @@ def row_to_user(row) -> User:
         gambling_winnings=gambling_winnings,
         gambling_losses=gambling_losses
     )
+
+
+def get_percentage(part, total):
+    if total == 0:
+        return 0  
+    return (part / total) * 100

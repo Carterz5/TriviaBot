@@ -67,7 +67,7 @@ def register_commands(tree: discord.app_commands.CommandTree):
        
         question = models.row_to_question(result)
         embed = question.to_embed()
-        view = AnswerButtons(question)
+        view = AnswerButtons(question, interaction.user.id)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
