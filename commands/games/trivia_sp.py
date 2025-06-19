@@ -57,8 +57,8 @@ class AnswerButton(discord.ui.Button):
         self.index = index
 
     async def callback(self, interaction: discord.Interaction):
-        if not interaction.user.id == self.view.starter:
-            interaction.response.send_message("This is a single player game, and you did not start it!")
+        if interaction.user.id != self.view.starter:
+            await interaction.response.send_message("This is a single player game, and you did not start it!", ephemeral=True)
             return
         
         question: Question = self.view.question

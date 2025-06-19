@@ -41,12 +41,18 @@ class cf_buttons(discord.ui.View):
             color=discord.Color.blurple()
         )
         for user, data in self.players.items():
-            
-            embed.add_field(
-            name=f"Player:",
-            value=f"<@{user}> Score: {data["Score"]} Flips: {data["Flips"]}",
-            inline=False
-            )
+            if data["Flips"] == 0:
+                embed.add_field(
+                name=f"Player:",
+                value=f"<@{user}> was too poor to flip a coin! 😬 📉",
+                inline=False
+                )
+            else:
+                embed.add_field(
+                name=f"Player:",
+                value=f"<@{user}> Score: {data["Score"]} Flips: {data["Flips"]}",
+                inline=False
+                )
 
 
         await self.message.edit(embed=embed, view=self)       
@@ -80,17 +86,19 @@ class cf_button(discord.ui.Button):
             return
         
         if correct_side == self.choice:
+            user.points += self.view.bet
             await interaction.response.send_message(content=f"You guessed right! You have won {self.view.bet} points! Your new balance is {user.points}.", ephemeral=True)
             player["Score"] += self.view.bet
             player["Flips"] += 1
             user.gambling_winnings += self.view.bet
-            user.points += self.view.bet
+            
         else:
+            user.points -= self.view.bet
             await interaction.response.send_message(content=f"You guessed wrong! You have lost {self.view.bet} points! Your new balance is {user.points}.", ephemeral=True)
             player["Score"] -= self.view.bet
             player["Flips"] += 1
             user.gambling_losses += self.view.bet
-            user.points -= self.view.bet
+            
             
         await self.view.update_embed()
 
