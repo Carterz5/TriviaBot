@@ -3,6 +3,7 @@
 	git clone https://github.com/Carterz5/TriviaBot.git
 
 2. install python venv
+
 	a. install pyenv
 		follow instructions here https://github.com/pyenv/pyenv
 		pyenv install 3.12.3
@@ -12,6 +13,7 @@
 	source venv/bin/activate
 
 3. install python3 packages
+
     use requirements.txt or pip install
 
         discord.py
@@ -21,6 +23,7 @@
 
 
 4. setup mysql database
+
 	sudo apt update
 	sudo apt install mysql-server
 	sudo systemctl start mysql
@@ -40,6 +43,7 @@
 
 
 5. create .env
+
     example
     ``` DISCORD_TOKEN = your_token_here
 
@@ -50,8 +54,10 @@
 	```
 
 6. Add questions to database
+
 	python3 question_grabber.py
 
 
 7. Run the bot
+
 	python3 main.py
