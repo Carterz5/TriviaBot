@@ -58,19 +58,20 @@
 5. create .env
 
     example
-    ``` DISCORD_TOKEN = your_token_here
-
-        DB_HOST = "localhost"
-        DB_USER = "your_username"
-        DB_PASSWORD = "your_password"
-        DB_DATABASE = "Discord_Bot"
+   
+	```
+ 	DISCORD_TOKEN = your_token_here
+ 	DB_HOST = "localhost"
+ 	DB_USER = "your_username"
+ 	DB_PASSWORD = "your_password"
+ 	DB_DATABASE = "Discord_Bot"
 	```
 
-6. Add questions to database
+7. Add questions to database
 
 	python3 question_grabber.py
 
 
-7. Run the bot
+8. Run the bot
 
 	python3 main.py
