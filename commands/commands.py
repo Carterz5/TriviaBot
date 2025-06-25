@@ -25,6 +25,10 @@ def register_commands(tree: discord.app_commands.CommandTree):
 
     @tree.command(name="mystats", description="Displays users stats!")
     async def my_stats(interaction: discord.Interaction):
+        if not db.user_exists(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message("You aren't registered, please use the /register command!")
+            return
+        
         user_id = interaction.user.id
         guild_id = interaction.guild.id
         logging.info(f"Fetching stats for user {user_id}, guild {guild_id}")
